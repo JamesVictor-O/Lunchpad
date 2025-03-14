@@ -1,35 +1,63 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React from "react";
+import { RouterProvider } from "react-router-dom";
+import "@rainbow-me/rainbowkit/styles.css";
+import { getDefaultConfig, RainbowKitProvider } from "@rainbow-me/rainbowkit";
+import { createBrowserRouter, createRoutesFromElements,Route } from "react-router-dom";
+import LandingPage from "./page/LandingPage";
+import { WagmiProvider} from "wagmi";
+import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
+import "./App.css";
 
 function App() {
-  const [count, setCount] = useState(0)
+  const lisk = {
+    id: 4202,
+    name: 'Lisk Sepolia Testnet',
+    network: 'lisk-testnet',
+    nativeCurrency: {
+      name: 'Lisk',
+      symbol: 'LSK',
+      decimals: 18,
+    },
+    rpcUrls: {
+      default: {
+        http: ['https://rpc.sepolia-api.lisk.com/'],
+      },
+      public: {
+        http: ['https://rpc.sepolia-api.lisk.com/'],
+      },
+    },
+    blockExplorers: {
+      default: { name: 'Lisk Explorer', url: 'https://sepolia-blockscout.lisk.com/' },
+    },
+    testnet: true,
+  };
+  
 
+  const queryClient = new QueryClient();
+  const config = getDefaultConfig({
+    appName: "My RainbowKit App", 
+    projectId: "YOUR_PROJECT_ID",
+    chains: [lisk],
+  });
+
+  const router=createBrowserRouter(
+    createRoutesFromElements(
+        <Route path="/" element={<LandingPage/>}>
+            <Route index element={<LandingPage/>}/>
+        </Route>
+    )
+)
   return (
     <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
+      <WagmiProvider config={config}>
+        <QueryClientProvider client={queryClient}>
+          <RainbowKitProvider>
+            <RouterProvider router={router} />
+          </RainbowKitProvider>
+        </QueryClientProvider>
+      </WagmiProvider>
     </>
-  )
+  );
 }
 
-export default App
+export default App;
