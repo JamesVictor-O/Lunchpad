@@ -933,7 +933,7 @@
     "@types/babel__core" "^7.20.5"
     react-refresh "^0.14.2"
 
-"@wagmi/connectors@5.7.9":
+"@wagmi/connectors@^5.7.9", "@wagmi/connectors@5.7.9":
   version "5.7.9"
   resolved "https://registry.npmjs.org/@wagmi/connectors/-/connectors-5.7.9.tgz"
   integrity sha512-mKgSjjdlnFjVu5dE8yKJfgs06+GvFFf6tOrLh9ihFzz0dwv6SQtC68qeo/YHxiHRZ8olFzam8GQRuTXM9bF1rg==
