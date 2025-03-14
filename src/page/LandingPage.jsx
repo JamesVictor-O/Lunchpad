@@ -7,122 +7,48 @@ import {
   useWriteContract,
   useWaitForTransactionReceipt,
 } from "wagmi";
-import { waitForTransactionReceipt } from '@wagmi/core'
+
 import { contractAddress } from "../utils/contractAddress";
 import contractAbi from "../contractAbi";
 
 const LandingPage = () => {
   const [tokenType, setTokenType] = useState("erc20");
-  const [tokenName, setTokenName] = useState("");
-  const [tokenSymbol, setTokenSymbol] = useState("");
   const [deployERC20Info, setDeployERC20Info] = useState({
     name: "",
     symbol: "",
     totalSupply: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
   const [baseUrl, setBaseUrl] = useState("");
+  const [transactionHash, setTransactionHash] = useState("");
+  const [deployedAddress, setDeployedAddress] = useState("");
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, chain } = useAccount();
   const { writeContractAsync, isPending, isErrorWrite } = useWriteContract();
   const { data: hash, error: writeError } = useWriteContract();
-const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
-  hash,
-});
-
-  const {
-    data: deployedErc20Count,
-    error: isError,
-    isLoading,
-  } = useReadContract({
-    address: contractAddress,
-    abi: contractAbi,
-    functionName: "deployedErc20Count",
-    arg: [],
-  });
 
 
-  useEffect(() => {
-    console.log("outcome");
-    if (isPending) {
-      console.log("Erc20 is lunching...");
-    } else if (isErrorWrite) {
-      console.error("Erc20 lunch failed:", isError);
-
-      console.error("Error code:", isError.code);
-      console.error("Error message:", isError.message);
-      console.error("Error data:", isError.data);
-    } else if (deployedErc20Count !== undefined) {
-      console.log("Erc lunched:", deployedErc20Count);
-    }
-  }, [deployedErc20Count, isLoading, isError]);
-
-  // const handleSubmit = async (e) => {
-  //   e.preventDefault();
-
-  //   if (!deployERC20Info.name.trim()) {
-  //     alert("Please enter a token name");
-  //     return;
-  //   }
-
-  //   if (!deployERC20Info.symbol.trim()) {
-  //     alert("Please enter a token symbol");
-  //     return;
-  //   }
-
-  //   if (
-  //     !deployERC20Info.totalSupply ||
-  //     isNaN(Number(deployERC20Info.totalSupply))
-  //   ) {
-  //     alert("Please enter a valid number for total supply");
-  //     return;
-  //   }
-
+ 
+  const getExplorerUrl = (hash) => {
+    const chainId = chain?.id || 1; 
+    const explorerUrls = {
+      1: "https://sepolia-blockscout.lisk.com/token",
+    };
     
-  //   const confirmed = window.confirm(
-  //     `Are you sure you want to deploy a token with the following details?\n\nName: ${deployERC20Info.name}\nSymbol: ${deployERC20Info.symbol}\nTotal Supply: ${deployERC20Info.totalSupply}`
-  //   );
+    const baseUrl = explorerUrls[chainId] || "https://sepolia-blockscout.lisk.com/token";
+    return `${baseUrl}/tx/${hash}`;
+  };
 
-  //   if (!confirmed) {
-  //     return;
-  //   }
-  //   console.log(deployERC20Info.totalSupply)
-  //   if (tokenType == "erc20") {
-      
-  //     setIsSubmitting(true);
-  //     setSuccess(false);
-  //     try {
-  //       await writeContractAsync({
-  //         address: contractAddress,
-  //         abi: contractAbi,
-  //         functionName: "deployErc20",
-  //         args: [
-  //           deployERC20Info.name,
-  //           deployERC20Info.symbol,
-  //           address,
-  //           deployERC20Info.totalSupply,
-  //         ],
-  //       });
-  //     } catch (error) {
-  //       console.error("Error details:", error);
-  //       console.error("Error code:", error.code);
-  //       console.error("Error message:", error.message);
-  //       console.error("Error data:", error.data);
-
-  //       alert("Failed to deploy token. See console for details.");
-  //     } finally {
-  //       setIsSubmitting(false);
-  //       setDeployERC20Info((prev) => ({
-  //         name: "",
-  //         symbol: "",
-  //         totalSupply: "",
-  //       }));
-  //     }
-  //   }else{
-  //     console.log("okay")
-  //   }
-  // };
+  const getTokenExplorerUrl = (address) => {
+    const chainId = chain?.id || 1;
+    const explorerUrls = {
+      1: "https://sepolia-blockscout.lisk.com/token",
+    };
+    
+    const baseUrl = explorerUrls[chainId] || "https://sepolia-blockscout.lisk.com/token";
+    return `${baseUrl}/token/${address}`;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -144,8 +70,6 @@ const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactio
       alert("Please enter a valid number for total supply");
       return;
     }
-
-    // Maybe add a confirmation dialog before proceeding
     const confirmed = window.confirm(
       `Are you sure you want to deploy a token with the following details?\n\nName: ${deployERC20Info.name}\nSymbol: ${deployERC20Info.symbol}\nTotal Supply: ${deployERC20Info.totalSupply}`
     );
@@ -153,32 +77,44 @@ const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactio
     if (!confirmed) {
       return;
     }
+    
+    setIsSubmitting(true);
   
     try {
       const hash = await writeContractAsync({
         address: contractAddress,
         abi: contractAbi,
-        functionName: "deployErc20",
-        args: [
+        functionName: tokenType === "erc20" ? "deployErc20" : "deployErc721",
+        args: tokenType === "erc20" ? [
           deployERC20Info.name,
           deployERC20Info.symbol,
           address,
           deployERC20Info.totalSupply,
+        ] : [
+          deployERC20Info.name,
+          deployERC20Info.symbol,
+          address,
+          baseUrl,
         ],
       });
-  
-      console.log("Transaction hash:", hash);
-  
-      // Wait for the transaction to be confirmed
-      const receipt = await waitForTransactionReceipt({ hash });
-      console.log("Transaction receipt:", receipt);
-  
-      if (receipt.status === "success") {
-        setSuccess(true);
-        console.log("Token deployed successfully!");
-      } else {
-        console.error("Transaction failed:", receipt);
+      setTransactionHash(hash);
+     {
+        try {
+          const iface = new ethers.utils.Interface(contractAbi);
+          const log = receipt.logs.find(log => log.address.toLowerCase() === contractAddress.toLowerCase());
+          if (log) {
+            const parsedLog = iface.parseLog(log);
+            if (parsedLog && parsedLog.args && parsedLog.args.tokenAddress) {
+              setDeployedAddress(parsedLog.args.tokenAddress);
+            }
+          }
+        } catch (error) {
+          console.error("Error parsing logs:", error);
+        }
       }
+  
+      setSuccess(true);
+      setShowSuccessModal(true);
     } catch (error) {
       console.error("Error details:", error);
       alert("Failed to deploy token. See console for details.");
@@ -189,8 +125,21 @@ const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactio
         symbol: "",
         totalSupply: "",
       });
+      setBaseUrl("");
     }
   };
+
+
+
+
+
+
+
+
+
+
+
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-indigo-900 to-gray-800 text-white">
       <div className="container mx-auto px-4 py-8">
@@ -397,17 +346,6 @@ const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactio
                 </div>
               </form>
 
-              {success && (
-                <div className="mt-6 p-4 bg-green-900/30 border border-green-700 rounded-lg">
-                  <p className="text-green-400 font-medium">
-                    🎉 Success! Your token has been deployed!
-                  </p>
-                  <p className="text-sm text-gray-300 mt-1 break-all">
-                    Address: {deployedAddress}
-                  </p>
-                </div>
-              )}
-
               {!isConnected && (
                 <p className="mt-4 text-sm text-gray-400 text-center">
                   Please connect your wallet to launch a token
@@ -423,6 +361,111 @@ const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactio
           </div>
         </main>
       </div>
+
+      {/* Success Modal Popup */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/70 backdrop-blur-sm">
+          <div className="bg-gradient-to-br from-gray-900 to-indigo-900 border border-purple-500 rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-fadeIn">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold text-white">Deployment Successful! 🎉</h3>
+                <button 
+                  onClick={() => setShowSuccessModal(false)}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-green-500/20 to-blue-500/20 animate-pulse rounded-lg" />
+                <div className="bg-gray-800/80 border border-green-500/50 rounded-lg p-4 relative">
+                  <div className="flex items-center justify-center mb-4">
+                    <div className="h-16 w-16 rounded-full bg-gradient-to-r from-green-400 to-emerald-500 flex items-center justify-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                  </div>
+                  
+                  <h4 className="text-lg font-semibold text-center text-white mb-2">
+                    {tokenType === "erc20" ? "Token" : "NFT Collection"} Deployed Successfully!
+                  </h4>
+                  
+                  <div className="space-y-3 mt-4">
+                    <div>
+                      <p className="text-sm text-gray-400">Name:</p>
+                      <p className="text-white font-medium">{deployERC20Info.name || "Your Token"}</p>
+                    </div>
+                    
+                    <div>
+                      <p className="text-sm text-gray-400">Symbol:</p>
+                      <p className="text-white font-medium">{deployERC20Info.symbol || "TKN"}</p>
+                    </div>
+                    
+                    {deployedAddress && (
+                      <div>
+                        <p className="text-sm text-gray-400">Contract Address:</p>
+                        <p className="text-white font-medium break-all">{deployedAddress}</p>
+                      </div>
+                    )}
+                    
+                    {transactionHash && (
+                      <div>
+                        <p className="text-sm text-gray-400">Transaction Hash:</p>
+                        <p className="text-white font-medium break-all">{transactionHash}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-6 flex flex-col space-y-3">
+                {transactionHash && (
+                  <a 
+                    href={getExplorerUrl(transactionHash)} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="w-full py-2 px-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 rounded-lg text-white font-medium text-center transition-all flex items-center justify-center"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                    View Transaction on Explorer
+                  </a>
+                )}
+                
+                {deployedAddress && (
+                  <a 
+                    href={getTokenExplorerUrl(deployedAddress)} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="w-full py-2 px-4 bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 rounded-lg text-white font-medium text-center transition-all flex items-center justify-center"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    View {tokenType === "erc20" ? "Token" : "NFT Collection"} on Explorer
+                  </a>
+                )}
+                
+                <button
+                  onClick={() => setShowSuccessModal(false)}
+                  className="w-full py-2 px-4 bg-gray-700 hover:bg-gray-600 rounded-lg text-white font-medium text-center transition-all"
+                >
+                  Close
+                </button>
+              </div>
+              
+              <div className="mt-4 text-xs text-center text-gray-400">
+                Share your new {tokenType === "erc20" ? "token" : "NFT collection"} with your community! 🚀
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
