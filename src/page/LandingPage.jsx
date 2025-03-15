@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+// import { waitForTransactionReceipt } from 'wagmi/actions';
 import { ethers } from "ethers";
 import {
   useReadContract,
@@ -33,20 +34,20 @@ const LandingPage = () => {
   const getExplorerUrl = (hash) => {
     const chainId = chain?.id || 1; 
     const explorerUrls = {
-      1: "https://sepolia-blockscout.lisk.com/token",
+      1: "https://sepolia-blockscout.lisk.com",
     };
     
-    const baseUrl = explorerUrls[chainId] || "https://sepolia-blockscout.lisk.com/token";
+    const baseUrl = explorerUrls[chainId] || "https://sepolia-blockscout.lisk.com";
     return `${baseUrl}/tx/${hash}`;
   };
 
   const getTokenExplorerUrl = (address) => {
     const chainId = chain?.id || 1;
     const explorerUrls = {
-      1: "https://sepolia-blockscout.lisk.com/token",
+      1: "https://sepolia-blockscout.lisk.com",
     };
     
-    const baseUrl = explorerUrls[chainId] || "https://sepolia-blockscout.lisk.com/token";
+    const baseUrl = explorerUrls[chainId] || "https://sepolia-blockscout.lisk.com";
     return `${baseUrl}/token/${address}`;
   };
 
@@ -79,7 +80,6 @@ const LandingPage = () => {
     }
     
     setIsSubmitting(true);
-  
     try {
       const hash = await writeContractAsync({
         address: contractAddress,
@@ -98,34 +98,37 @@ const LandingPage = () => {
         ],
       });
       setTransactionHash(hash);
-     {
-        try {
-          const iface = new ethers.utils.Interface(contractAbi);
-          const log = receipt.logs.find(log => log.address.toLowerCase() === contractAddress.toLowerCase());
-          if (log) {
-            const parsedLog = iface.parseLog(log);
-            if (parsedLog && parsedLog.args && parsedLog.args.tokenAddress) {
-              setDeployedAddress(parsedLog.args.tokenAddress);
-            }
+      
+     
+      // const receipt = await waitForTransactionReceipt({ hash });
+      
+    
+      try {
+       
+        const iface = new ethers.Interface(contractAbi);
+        
+        const log = receipt.logs.find(log => log.address.toLowerCase() === contractAddress.toLowerCase());
+        if (log) {
+          const parsedLog = iface.parseLog(log);
+          if (parsedLog && parsedLog.args && parsedLog.args.tokenAddress) {
+            setDeployedAddress(parsedLog.args.tokenAddress);
           }
-        } catch (error) {
-          console.error("Error parsing logs:", error);
         }
+      } catch (error) {
+        console.error("Error parsing logs:", error);
       }
-  
-      setSuccess(true);
+      
       setShowSuccessModal(true);
     } catch (error) {
       console.error("Error details:", error);
       alert("Failed to deploy token. See console for details.");
     } finally {
       setIsSubmitting(false);
-      setDeployERC20Info({
+      setDeployERC20Info((prev)=>({
         name: "",
         symbol: "",
         totalSupply: "",
-      });
-      setBaseUrl("");
+      }))
     }
   };
 
@@ -145,7 +148,7 @@ const LandingPage = () => {
       <div className="container mx-auto px-4 py-8">
         <header className="mb-10">
           <div className="flex justify-between items-center">
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-700 to-indigo-600 bg-clip-text text-transparent">
               Token Launch
             </h1>
 
@@ -186,7 +189,7 @@ const LandingPage = () => {
         <main className="max-w-lg mx-auto">
           <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl shadow-2xl overflow-hidden">
             <div className="p-6">
-              <h2 className="text-2xl font-semibold mb-6 text-center bg-gradient-to-r from-pink-400 to-blue-500 bg-clip-text text-transparent">
+              <h2 className="text-2xl font-semibold mb-6 text-center bg-gradient-to-r from-purple-700 to-indigo-600 bg-clip-text text-transparent">
                 Launch Your Token to the Moon 🚀
               </h2>
 
@@ -194,7 +197,7 @@ const LandingPage = () => {
                 <button
                   className={`flex-1 py-2 px-4 rounded-md transition-all ${
                     tokenType === "erc20"
-                      ? "bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg"
+                      ? "bg-gradient-to-r from-purple-700 to-indigo-600 text-white shadow-lg"
                       : "text-gray-400 hover:text-white"
                   }`}
                   onClick={() => setTokenType("erc20")}
@@ -298,7 +301,7 @@ const LandingPage = () => {
                           !isConnected
                             ? "bg-gray-700 text-gray-400 cursor-not-allowed"
                             : isSubmitting
-                            ? "bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white cursor-wait animate-pulse"
+                            ? "bg-gradient-to-r from-purple-700 to-indigo-600 text-white cursor-wait animate-pulse"
                             : "bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white shadow-lg hover:shadow-pink-500/25"
                         }`}
                       >
